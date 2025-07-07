@@ -1,0 +1,57 @@
+# P1x3lz Development Rules
+
+## Platform Overview
+P1x3lz is a minimal arcade game web platform focused on grid-based PvP multiplayer games. All games leverage variable-sized grids for turn-based or real-time gameplay.
+
+## Tech Stack
+- **Frontend**: React with TypeScript
+- **UI Framework**: Chakra UI (minimal CSS, maximum component reuse)
+- **Game Engine**: Phaser for canvas/2D management and collision detection
+- **Build Tool**: Vite with Bun for package management
+- **State Management**: Local state for MVP (future: P2P WebRTC)
+
+## Development Principles
+1. **Extreme Minimalism**: Keep UI/UX lightweight, intuitive, and fluid
+2. **Grid-Centric**: All games revolve around variable-sized grids
+3. **Mobile-First**: Must run on low-end devices and mobile
+4. **Optimization-First**: Prioritize performance over complex patterns
+5. **Reusability**: Create generic, reusable components for game types
+
+## Code Standards
+- Use TypeScript for all code
+- Prefer Chakra UI components over custom CSS
+- Keep game logic separate from UI components
+- Implement clean separation between Phaser game engine and React UI
+- Use consistent naming: PascalCase for components, camelCase for functions
+- Minimal dependencies - only add what's essential
+
+## Architecture
+- **React**: UI layer (menus, lobbies, HUD)
+- **Phaser**: Game rendering and logic
+- **Chakra UI**: All visual controls and layout
+- **Local State**: MVP uses browser-only state management
+- **Future**: P2P WebRTC for multiplayer state synchronization
+
+## Game Development Guidelines
+- All games must implement standardized interfaces (Player, Game, Options)
+- Games should feel familiar (inspired by classic arcade games)
+- Support both human players and AI when available
+- Implement proper turn-based or real-time mechanics
+- Always end with player rankings and scores
+
+## Conquer Game Rules
+- Regions are only captured when completely surrounded by the player's own tiles or rocks
+- Grid edges do NOT count as boundaries - regions touching the edge cannot be captured
+- Any opponent tiles (orphans) within a captured region are converted to the capturing player
+- Opponent scores are updated when their tiles are captured by region conquest
+
+## Reusable UI Components (added 2025-07-07)
+
+To avoid style duplication, use the shared components located in `src/components/common/`:
+
+1. `StyledInput` – Chakra `Input` with transparent dark background, subtle gray border, blue focus ring/hover.
+2. `StyledSelect` – Chakra `Select` with the same styling as `StyledInput`.
+3. `StyledButton` – Chakra `Button` pre-configured as outline variant with unified hover feedback. `colorScheme` still works (defaults to `blue`).
+4. `StyledBox` – Chakra `Box` with transparent background, subtle gray border, standard padding, and hover effects for consistent panel styling.
+
+Always import these instead of raw `Input`, `Select`, `Button`, `Box` whenever you need the default styling described above. If you need a variant radically different in appearance, create a new wrapper component rather than repeating inline `sx` throughout the codebase.

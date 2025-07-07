@@ -1,0 +1,29 @@
+html {
+  background-color: var(--chakra-colors-bg);
+  /* Ensure the dark background always fills the viewport */
+  min-height: 100%;
+  width: 100%;
+}
+
+/* Firefox */
+html {
+  scrollbar-width: thin;          /* Thin scrollbar */
+  scrollbar-color: var(--chakra-colors-accent-primary) transparent; /* Blue thumb, transparent track */
+}
+
+/* WebKit-based browsers */
+::-webkit-scrollbar {
+  width: 8px;                     /* Width of vertical scrollbar */
+  height: 8px;                    /* Height of horizontal scrollbar */
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;        /* Transparent track */
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: var(--chakra-colors-accent-primary); /* Blue thumb */
+  border-radius: 4px;             /* Rounded corners */
+  border: 2px solid transparent;  /* Space around thumb for transparency effect */
+  background-clip: content-box;   /* Ensure border creates padding */
+} 
