@@ -161,7 +161,8 @@ export class ConquerScene extends GridScene {
    * Detects if there's an enclosed region starting from a position.
    * A region is enclosed if it's surrounded by the player's own tiles or rocks.
    * The region itself can contain empty cells and opponent's cells, which will be captured.
-   * Grid edges count as boundaries up to the maxNeutralEdges limit.
+   * Grid edges count as neutral boundaries up to the maxNeutralEdges limit.
+   * However, if any opponent tiles are on the edge within the region, those edges are not neutral and prevent conquest.
    */
   private detectEnclosedRegion(startPos: Position, player: Player): Region | null {
     const startCell = this.conquerGame.grid.cells[startPos.y]?.[startPos.x];
@@ -198,15 +199,31 @@ export class ConquerScene extends GridScene {
       });
     }
 
-    // After flood fill, verify all boundary neighbours are player-owned, rocks, or edges
-    // Count the number of edge boundaries and enforce the maxNeutralEdges limit
+    // After flood fill, verify all boundary neighbours are player-owned, rocks, or neutral edges
+    // Count the number of neutral edge boundaries and enforce the maxNeutralEdges limit
+    // If any opponent tiles are on the edge within the region, those edges are not neutral
     let edgeCount = 0;
     const maxEdges = (this.conquerGame.options as ConquerOptions).maxNeutralEdges;
     
+    // First, check if any opponent tiles are on the edge within the region
+    for (const cellPos of regionCells) {
+      const cell = this.conquerGame.grid.cells[cellPos.y]?.[cellPos.x];
+      if (cell?.owner && cell.owner.id !== player.id) {
+        // This is an opponent tile within the region
+        // Check if this opponent tile is on the edge
+        if (cellPos.x === 0 || cellPos.x === this.conquerGame.grid.width - 1 || 
+            cellPos.y === 0 || cellPos.y === this.conquerGame.grid.height - 1) {
+          // Opponent tile is on the edge - this region cannot be captured
+          return null;
+        }
+      }
+    }
+    
+    // Now check boundaries and count neutral edges
     for (const cellPos of regionCells) {
       for (const neigh of this.getAdjacentPositions(cellPos)) {
         if (neigh.x < 0 || neigh.x >= this.conquerGame.grid.width || neigh.y < 0 || neigh.y >= this.conquerGame.grid.height) {
-          // Edge detected – count it
+          // Edge detected – count it as neutral
           edgeCount++;
           continue;
         }
@@ -226,7 +243,7 @@ export class ConquerScene extends GridScene {
       }
     }
 
-    // Check if the region exceeds the maximum allowed edge boundaries
+    // Check if the region exceeds the maximum allowed neutral edge boundaries
     if (edgeCount > maxEdges) {
       return null;
     }
