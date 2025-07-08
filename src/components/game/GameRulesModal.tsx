@@ -18,6 +18,7 @@ import {
   Badge,
 } from '@chakra-ui/react';
 import { GameType } from '../../types/core-types';
+import TransparentBox from '../common/TransparentBox';
 
 interface GameRulesModalProps {
   isOpen: boolean;
@@ -140,26 +141,28 @@ const GameRulesModal: React.FC<GameRulesModalProps> = ({ isOpen, onClose, gameTy
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} size="xl" scrollBehavior="inside">
-      <ModalOverlay bg="blackAlpha.600" />
-      <ModalContent bg="gray.800" border="1px solid" borderColor="gray.600">
-        <ModalHeader>
-          <HStack>
-            <Text>📖 Game Rules</Text>
-            <Badge colorScheme="blue" variant="subtle">
-              {gameType.toUpperCase()}
-            </Badge>
-          </HStack>
-        </ModalHeader>
-        <ModalCloseButton />
-        <ModalBody>
-          {renderRulesContent()}
-        </ModalBody>
-        <ModalFooter>
-          <Button colorScheme="blue" onClick={onClose}>
-            Got it!
-          </Button>
-        </ModalFooter>
+    <Modal isOpen={isOpen} onClose={onClose} size="xl" scrollBehavior="inside" motionPreset="none">
+      <ModalOverlay bg="transparent" backdropFilter="blur(4px)" />
+      <ModalContent bg="transparent" boxShadow="none" p={0}>
+        <TransparentBox p={3} w="full">
+          <ModalHeader>
+            <HStack>
+              <Text>📖 Game Rules</Text>
+              <Badge colorScheme="blue" variant="subtle">
+                {gameType.toUpperCase()}
+              </Badge>
+            </HStack>
+          </ModalHeader>
+          <ModalCloseButton />
+          <ModalBody>
+            {renderRulesContent()}
+          </ModalBody>
+          <ModalFooter>
+            <Button colorScheme="blue" onClick={onClose}>
+              Got it!
+            </Button>
+          </ModalFooter>
+        </TransparentBox>
       </ModalContent>
     </Modal>
   );

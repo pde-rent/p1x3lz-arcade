@@ -15,6 +15,7 @@ import { GameCanvas } from './GameCanvas';
 import type { GameCanvasRef } from './GameCanvas';
 import { GameInfoPanel } from './GameInfoPanel';
 import { GameOverModal } from './GameOverModal';
+import { TurnNotificationModal } from './TurnNotificationModal';
 import { ScreenType, GameType, GameStatus, GamePhase, createEmptyGrid, createPlayer, DEFAULT_CONQUER_OPTIONS } from '../../types/core-types';
 import type { Game, Position, Turn, PlayerScore } from '../../types/core-types';
 import { createScoreCalculator } from '../../utils/ScoreCalculators';
@@ -80,6 +81,10 @@ const InGameScreen: React.FC = () => {
 
   const scoreCalculator = useMemo(() => createScoreCalculator(activeGame.type), [activeGame.type]);
   const [scores, setScores] = useState<PlayerScore[]>([]);
+  
+  // Turn notification state
+  const [showTurnNotification, setShowTurnNotification] = useState(false);
+  const [lastTurnPlayerId, setLastTurnPlayerId] = useState<string | null>(null);
 
   useEffect(() => {
     const newScores = gameLogicState.game.players.map(p =>
@@ -87,6 +92,24 @@ const InGameScreen: React.FC = () => {
     );
     setScores(newScores);
   }, [gameLogicState.game, scoreCalculator]);
+
+  // Handle turn change notifications for turn-based games
+  useEffect(() => {
+    const currentPlayerId = gameLogicState.currentPlayer?.id;
+    
+    // Only show notifications for turn-based games and when game is running
+    if (activeGame.type === GameType.CONQUER && 
+        gameLogicState.game.status === GameStatus.RUNNING &&
+        currentPlayerId && 
+        currentPlayerId !== lastTurnPlayerId) {
+      
+      // Don't show notification on initial load
+      if (lastTurnPlayerId !== null) {
+        setShowTurnNotification(true);
+      }
+      setLastTurnPlayerId(currentPlayerId);
+    }
+  }, [gameLogicState.currentPlayer?.id, lastTurnPlayerId, activeGame.type, gameLogicState.game.status]);
 
   const handleCellClick = (position: Position) => {
     // Prevent moves if game is over
@@ -130,7 +153,7 @@ const InGameScreen: React.FC = () => {
   };
 
   const handleGameEvent = (event: string, data: unknown) => {
-    console.warn('Game event:', event, data);
+    // Game event handling - no logging needed in production
   };
 
   const handleEndGameContinue = () => {
@@ -172,6 +195,10 @@ const InGameScreen: React.FC = () => {
     [gameLogicState.game.winCondition]
   );
 
+  const handleTurnNotificationComplete = () => {
+    setShowTurnNotification(false);
+  };
+
   return (
     <Box position="relative" w="full" h="100vh" overflow="hidden">
       {/* Game Canvas */}
@@ -199,13 +226,22 @@ const InGameScreen: React.FC = () => {
         <GameOverModal
           isOpen={true}
           onClose={handleEndGameContinue}
-          isWinner={winCondition.winners.some(w => w.id === localPlayerId)}
           winCondition={{
             winners: winCondition.winners,
             reason: winCondition.reason,
           }}
+          players={gameLogicState.game.players}
+          scores={scores}
         />
       )}
+
+      {/* Turn Notification Modal */}
+      <TurnNotificationModal
+        currentPlayer={gameLogicState.currentPlayer}
+        game={gameLogicState.game}
+        isVisible={showTurnNotification}
+        onComplete={handleTurnNotificationComplete}
+      />
 
       {/* New Unified Game Info Panel */}
       <GameInfoPanel

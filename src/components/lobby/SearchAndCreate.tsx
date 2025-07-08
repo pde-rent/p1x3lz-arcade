@@ -38,9 +38,9 @@ export const SearchAndCreate: React.FC<SearchAndCreateProps> = ({
       >
         <option value="ALL">All Games</option>
         <option value={GameType.CONQUER}>Conquer</option>
-        <option value="bomber" disabled title="Coming soon!">Bomber (soon)</option>
-        <option value={GameType.CHESS} disabled title="Coming soon!">Chess (soon)</option>
-        <option value={GameType.SNAKE} disabled title="Coming soon!">Snake (soon)</option>
+        <option value="bomber" disabled title="Soon!">Bomber (soon)</option>
+        <option value={GameType.CHESS} disabled title="Soon!">Chess (soon)</option>
+        <option value={GameType.SNAKE} disabled title="Soon!">Snake (soon)</option>
       </StyledSelect>
       <StyledButton
         onClick={onCreateGame}

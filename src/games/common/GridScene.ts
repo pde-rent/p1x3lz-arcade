@@ -29,6 +29,11 @@ export class GridScene extends Scene {
   private isDragging = false;
   private dragStartPos = { x: 0, y: 0 };
   private cameraStartPos = { x: 0, y: 0 };
+  
+  // Enhanced camera controls
+  private isSpacePressed = false;
+  private activeTouches: Phaser.Input.Pointer[] = [];
+  private lastPinchDistance = 0;
 
   // Audio objects for click sounds
   private bubblePopSounds: HTMLAudioElement[] = [];
@@ -55,7 +60,7 @@ export class GridScene extends Scene {
     this.grid = this.gameData.grid;
     this.setupGrid();
     this.setupInput();
-    this.setupZoom();
+    this.setupCameraControls();
     
     // Store references in scene data for React bridge
     this.data.set('scene', this);
@@ -101,7 +106,10 @@ export class GridScene extends Scene {
    */
   private setupInput() {
     this.input.on('gameobjectdown', (pointer: Phaser.Input.Pointer, gameObject: Phaser.GameObjects.Rectangle) => {
-      if (this.onCellClick && gameObject && !this.isDragging) {
+      // Prevent cell clicks when panning
+      if (this.isDragging || this.isSpacePressed) return;
+
+      if (this.onCellClick && gameObject) {
         const position = gameObject.getData('position') as Position;
         
         // Play random bubble pop sound
@@ -117,77 +125,119 @@ export class GridScene extends Scene {
   }
 
   /**
-   * Sets up zoom and pan functionality
+   * Sets up camera controls
    */
-  private setupZoom() {
-    // Mouse wheel zoom
-    this.input.on('wheel', (pointer: Phaser.Input.Pointer, gameObjects: Phaser.GameObjects.GameObject[], deltaX: number, deltaY: number) => {
+  private setupCameraControls() {
+    const camera = this.cameras.main;
+
+    // Wheel / track-pad zoom
+    this.input.on('wheel', (pointer: Phaser.Input.Pointer, _objects: Phaser.GameObjects.GameObject[], _deltaX: number, deltaY: number) => {
       this.handleZoom(pointer, deltaY);
     });
 
-    // Pan with mouse drag
+    // Pointer drag panning (right or middle mouse button)
     this.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
       if (pointer.rightButtonDown() || pointer.middleButtonDown()) {
         this.isDragging = true;
         this.dragStartPos = { x: pointer.x, y: pointer.y };
-        this.cameraStartPos = { x: this.cameras.main.scrollX, y: this.cameras.main.scrollY };
+        this.cameraStartPos = { x: camera.scrollX, y: camera.scrollY };
+        this.input.setDefaultCursor('grabbing');
+      } else if ((pointer as any).pointerType === 'touch') {
+        // Track active touches for pinch-to-zoom
+        if (!this.activeTouches.find(t => t.id === pointer.id)) {
+          this.activeTouches.push(pointer);
+        }
+        if (this.activeTouches.length === 2) {
+          this.lastPinchDistance = Phaser.Math.Distance.Between(
+            this.activeTouches[0]!.x,
+            this.activeTouches[0]!.y,
+            this.activeTouches[1]!.x,
+            this.activeTouches[1]!.y
+          );
+        }
       }
     });
 
     this.input.on('pointermove', (pointer: Phaser.Input.Pointer) => {
+      // ----- Pinch-to-zoom -----
+      if (
+        (pointer as any).pointerType === 'touch' &&
+        this.activeTouches.length === 2 &&
+        this.activeTouches.some(t => t.id === pointer.id)
+      ) {
+        const camera = this.cameras.main;
+        const touchA = this.activeTouches[0]! as Phaser.Input.Pointer;
+        const touchB = this.activeTouches[1]! as Phaser.Input.Pointer;
+        const distance = Phaser.Math.Distance.Between(touchA.x, touchA.y, touchB.x, touchB.y);
+
+        if (this.lastPinchDistance > 0) {
+          const scaleFactor = distance / this.lastPinchDistance;
+          const newZoom = Phaser.Math.Clamp(
+            camera.zoom * scaleFactor,
+            this.minZoom,
+            this.maxZoom
+          );
+          if (Math.abs(newZoom - camera.zoom) > 0.001) {
+            camera.setZoom(newZoom);
+            this.centerCamera();
+          }
+        }
+        this.lastPinchDistance = distance;
+        return; // skip panning logic while pinching
+      }
+
+      // ----- Mouse drag panning -----
+      if (!this.isDragging) return;
+      const deltaX = (pointer.x - this.dragStartPos.x) / camera.zoom;
+      const deltaY = (pointer.y - this.dragStartPos.y) / camera.zoom;
+      camera.scrollX = this.cameraStartPos.x - deltaX;
+      camera.scrollY = this.cameraStartPos.y - deltaY;
+      this.constrainCamera();
+    });
+
+    this.input.on('pointerup', (pointer: Phaser.Input.Pointer) => {
       if (this.isDragging) {
-        const deltaX = (pointer.x - this.dragStartPos.x) / this.cameras.main.zoom;
-        const deltaY = (pointer.y - this.dragStartPos.y) / this.cameras.main.zoom;
-        
-        this.cameras.main.setScroll(
-          this.cameraStartPos.x - deltaX,
-          this.cameraStartPos.y - deltaY
-        );
-        this.constrainCamera();
+        this.isDragging = false;
+        this.input.setDefaultCursor('default');
+      }
+
+      if ((pointer as any).pointerType === 'touch') {
+        // Remove touch from active list
+        this.activeTouches = this.activeTouches.filter(t => t.id !== pointer.id);
+        if (this.activeTouches.length < 2) {
+          this.lastPinchDistance = 0;
+        }
       }
     });
 
-    this.input.on('pointerup', () => {
-      this.isDragging = false;
-    });
-
-    // Handle trackpad pinch / alternative wheel events
-    this.input.on('pointerwheel', (pointer: Phaser.Input.Pointer, deltaX: number, deltaY: number) => {
+    // Some devices emit pointerwheel instead of wheel
+    this.input.on('pointerwheel', (pointer: Phaser.Input.Pointer, _deltaX: number, deltaY: number) => {
       this.handleZoom(pointer, deltaY);
     });
   }
 
   /**
-   * Handles zoom functionality with pointer-centered zooming
+   * Handles zoom functionality with smooth pointer-centered zooming
    */
-  private handleZoom(pointer: Phaser.Input.Pointer, deltaY: number) {
-    // Prevent zoom while panning
+  private handleZoom(pointer: Phaser.Input.Pointer | { x: number; y: number }, deltaY: number) {
+    const camera = this.cameras.main;
+    const oldZoom = camera.zoom;
+    
+    // Prevent zoom while actively panning
     if (this.isDragging) return;
     
-    const camera = this.cameras.main;
-    const prevZoom = camera.zoom;
-    
-    // Calculate new zoom level
+    // Calculate new zoom level with smooth scaling
+    const zoomDirection = deltaY > 0 ? -1 : 1;
     const newZoom = Phaser.Math.Clamp(
-      prevZoom - deltaY * (this.zoomFactor * prevZoom * 0.5),
+      oldZoom + zoomDirection * this.zoomFactor * oldZoom,
       this.minZoom,
       this.maxZoom
     );
 
-    if (newZoom !== prevZoom) {
-      // Calculate the world position under the pointer
-      const worldX = (pointer.x / prevZoom) + camera.scrollX;
-      const worldY = (pointer.y / prevZoom) + camera.scrollY;
-      
-      // Apply the new zoom
+    if (Math.abs(newZoom - oldZoom) > 0.001) {
       camera.setZoom(newZoom);
-      
-      // Calculate new scroll position to keep the world point under the pointer
-      const newScrollX = worldX - (pointer.x / newZoom);
-      const newScrollY = worldY - (pointer.y / newZoom);
-      
-      camera.setScroll(newScrollX, newScrollY);
-      this.constrainCamera();
+      // Always keep camera centered on the grid after zooming
+      this.centerCamera();
     }
   }
 

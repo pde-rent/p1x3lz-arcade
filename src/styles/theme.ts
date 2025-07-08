@@ -114,6 +114,13 @@ const theme = extendTheme({
         },
       },
     },
+    /** Disable animations for all Chakra Modals to improve performance on low-end devices */
+    Modal: {
+      defaultProps: {
+        /* No opening / closing animation */
+        motionPreset: 'none',
+      },
+    },
   },
 });
 

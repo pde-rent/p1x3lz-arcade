@@ -50,17 +50,19 @@ export const GameInfoPanel: React.FC<GameInfoPanelProps> = ({
     <>
       <Box position="fixed" top={4} right={4} zIndex={1200}>
         <StyledBox
-          bg="rgba(26, 32, 44, 0.4)"
+          bg="rgba(26, 32, 44, 0.25)"
+          backdropFilter="blur(12px)"
           borderRadius="xl"
           p={4}
           minW="320px"
           maxW="360px"
-          boxShadow="0 10px 40px rgba(0, 0, 0, 0.4)"
-          border="1px solid"
-          borderColor="gray.600"
-          backdropFilter="blur(12px)"
+          boxShadow="0 10px 40px rgba(0, 0, 0, 0.2)"
+          border="1px solid rgba(255, 255, 255, 0.1)"
           transition="all 0.3s ease-in-out"
-          _hover={{ borderColor: 'gray.500' }}
+          _hover={{ borderColor: 'rgba(255, 255, 255, 0.2)' }}
+          onMouseDown={(e) => e.stopPropagation()}
+          onTouchStart={(e) => e.stopPropagation()}
+          onWheel={(e) => e.stopPropagation()}
           onClick={handleBoxClick}
         >
           <VStack align="stretch" spacing={3}>

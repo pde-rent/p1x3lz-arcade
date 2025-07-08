@@ -155,7 +155,7 @@ export const GameCanvas = React.forwardRef<GameCanvasRef, GameCanvasProps>(({
         setIsInitialized(false);
       }
     };
-  }, [game?.id, canvasSize.width, canvasSize.height]); // Re-initialize if game or size changes
+  }, [game?.id, game?.startedAt, canvasSize.width, canvasSize.height]); // Re-initialize if game ID, start time, or size changes
 
   // Update game data when it changes
   useEffect(() => {

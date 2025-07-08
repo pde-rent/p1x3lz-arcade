@@ -37,12 +37,12 @@ export const useGameLogic = (
   const victoryAudio = useRef<HTMLAudioElement>(new Audio('/sounds/victory.mp3'));
   const defeatAudio = useRef<HTMLAudioElement>(new Audio('/sounds/game-over-voice.mp3'));
 
-  // Update internal game state when initialGame changes (by ID)
+  // Update internal game state when initialGame changes (by ID or restart)
   useEffect(() => {
-    if (initialGame.id !== game.id) {
+    if (initialGame.id !== game.id || initialGame.startedAt !== game.startedAt) {
       setGame(initialGame);
     }
-  }, [initialGame.id, game.id, initialGame]);
+  }, [initialGame.id, game.id, initialGame.startedAt, game.startedAt, initialGame]);
 
   // Derived state
   const localPlayers = game.players.filter(p => p.isLocal);
@@ -313,15 +313,16 @@ export const useGameLogic = (
   };
 
   /**
-   * Check Conquer victory conditions
+   * Check Conquer victory conditions with smart mathematical impossibility detection
    */
   const checkConquerVictory = (gameData: Game) => {
     const totalCells = gameData.grid.width * gameData.grid.height;
     const playerCounts = new Map<string, number>();
     let occupiedCells = 0;
     let rockCells = 0;
+    let emptyCells = 0;
 
-    // Count cells for each player and rocks
+    // Count cells for each player, rocks, and empty cells
     for (let y = 0; y < gameData.grid.height; y++) {
       for (let x = 0; x < gameData.grid.width; x++) {
         const cell = gameData.grid.cells[y]?.[x];
@@ -331,13 +332,16 @@ export const useGameLogic = (
           occupiedCells++;
         } else if (cell?.type === CellType.ROCK) {
           rockCells++;
+        } else if (cell?.type === CellType.EMPTY) {
+          emptyCells++;
         }
       }
     }
     
-    // 1. Check for majority control (>50% of playable cells)
     const playableCells = totalCells - rockCells;
     const majorityThreshold = Math.floor(playableCells / 2) + 1;
+    
+    // 1. Check for strict majority control (>50% of playable cells)
     for (const [playerId, count] of playerCounts.entries()) {
       if (count >= majorityThreshold) {
         const winner = gameData.players.find(p => p.id === playerId);
@@ -351,8 +355,43 @@ export const useGameLogic = (
         }
       }
     }
+
+    // 2. Check for mathematical impossibility - smart early victory detection
+    if (emptyCells > 0) {
+      // Get player scores sorted descending
+      const playerScores = gameData.players.map(player => ({
+        player,
+        count: playerCounts.get(player.id) || 0
+      })).sort((a, b) => b.count - a.count);
+
+             if (playerScores.length > 0 && playerScores[0]) {
+         const leader = playerScores[0];
+         const trailingPlayers = playerScores.slice(1);
+
+         // Check if it's mathematically impossible for any trailing player to catch up
+         // even if they got ALL remaining empty cells
+         let anyCanCatchUp = false;
+         for (const trailing of trailingPlayers) {
+           const maxPossibleScore = trailing.count + emptyCells;
+           if (maxPossibleScore > leader.count) {
+             anyCanCatchUp = true;
+             break;
+           }
+         }
+
+         // If no trailing player can catch up even with all remaining tiles, leader wins
+         if (!anyCanCatchUp && leader.count > 0) {
+           return {
+             hasWinner: true,
+             winners: [leader.player],
+             type: VictoryType.MAJORITY,
+             reason: `No opponent can catch up, ${leader.player.name} has an clear lead.`
+           };
+         }
+       }
+    }
     
-    // 2. Check if grid is full (stalemate or highest score wins)
+    // 3. Check if grid is full (stalemate or highest score wins)
     if (occupiedCells + rockCells >= totalCells) {
       const maxCount = Math.max(0, ...playerCounts.values());
       
@@ -385,6 +424,7 @@ export const useGameLogic = (
 
   /**
    * Advance to the next player's turn
+   * Turn number increments only when we complete a full round (all players played once)
    */
   const advanceToNextTurn = (gameData: Game) => {
     if (!gameData.currentTurn) return;
@@ -397,8 +437,13 @@ export const useGameLogic = (
     const nextPlayer = gameData.players[nextPlayerIndex];
     
     if (nextPlayer) {
+      // Increment turn number only when starting a new round (back to first player)
+      const newTurnNumber = nextPlayerIndex === 0 ? 
+        gameData.currentTurn.turnNumber + 1 : 
+        gameData.currentTurn.turnNumber;
+      
       gameData.currentTurn = {
-        turnNumber: gameData.currentTurn.turnNumber + 1,
+        turnNumber: newTurnNumber,
         playerId: nextPlayer.id,
         moves: [],
         timeLimit: gameData.options.turnTimeLimit,
@@ -419,8 +464,38 @@ export const useGameLogic = (
    * Update game data
    */
   const updateGame = useCallback((gameData: Partial<Game>) => {
-    setGame(prevGame => ({ ...prevGame, ...gameData }));
-  }, []);
+    setGame(prevGame => {
+      // Create a shallow copy so React detects a new reference while keeping
+      // nested structures (grid, players …) intact.
+      const mergedGame: Game = { ...prevGame, ...gameData } as Game;
+
+      // Re-evaluate victory only if the game is still running.
+      if (mergedGame.status === GameStatus.RUNNING) {
+        const victoryResult = checkVictoryConditions(mergedGame);
+
+        if (victoryResult.hasWinner) {
+          mergedGame.winCondition = victoryResult;
+          mergedGame.status = GameStatus.ENDED;
+          mergedGame.endedAt = new Date();
+
+          // Play SFX for local player (or defeat SFX otherwise).
+          const isLocalPlayerWinner = victoryResult.winners.some(winner =>
+            localPlayers.some(local => local.id === winner.id)
+          );
+
+          if (isLocalPlayerWinner) {
+            victoryAudio.current.currentTime = 0;
+            victoryAudio.current.play().catch(console.error);
+          } else {
+            defeatAudio.current.currentTime = 0;
+            defeatAudio.current.play().catch(console.error);
+          }
+        }
+      }
+
+      return mergedGame;
+    });
+  }, [checkVictoryConditions, localPlayers]);
 
   const state: GameLogicState = {
     game,

@@ -166,8 +166,13 @@ export class GameManager {
     const isHost = game.createdBy === currentPlayer.id;
     if (!isHost || game.players.length < 2) return null;
 
-    // Preserve the existing grid with its pre-generated rocks
-    const newGrid = game.grid;
+    // Check if this is a restart after game ended - reset everything
+    const isRestart = game.status === GameStatus.ENDED;
+    
+    // Create fresh grid if restarting, otherwise preserve existing grid
+    const newGrid = isRestart 
+      ? createEmptyGrid(game.options.gridSize.width, game.options.gridSize.height)
+      : game.grid;
 
     const firstTurn = {
       turnNumber: 1,
@@ -184,7 +189,9 @@ export class GameManager {
       gamePhase: GamePhase.PLAYING,
       grid: newGrid,
       currentTurn: firstTurn,
-      startedAt: new Date()
+      winCondition: null, // Clear previous win condition
+      startedAt: new Date(),
+      endedAt: undefined // Clear previous end time
     };
 
     this.actions.updateGame(updatedGame);

@@ -312,9 +312,16 @@ const Lobby: React.FC<LobbyProps> = ({ mode }) => {
   /*                              UI                                    */
   /* ------------------------------------------------------------------ */
   return (
-    <Box p={4} maxW="1200px" mx="auto">
+    <Box
+      p={4}
+      maxW="1200px"
+      mx="auto"
+      display="flex"
+      flexDirection="column"
+      minH="100vh"
+    >
       {/* Header */}
-      <HStack justify="space-between" mb={6}>
+      <HStack justify="space-between" mb={6} flexShrink={0}>
         <Heading fontFamily="Tiny5" fontSize="3xl" color="blue.300">
           {mode === 'main' ? 'P1x3lz Lobby' : currentGame?.name || 'Game Lobby'}
         </Heading>
@@ -329,52 +336,67 @@ const Lobby: React.FC<LobbyProps> = ({ mode }) => {
       </HStack>
 
       {/* Main layout */}
-      <HStack alignItems="flex-start" gap={6} minH="600px">
+      <HStack alignItems="flex-start" gap={6} flex="1" overflow="hidden">
         {/* Left column */}
-        <VStack flex={3} align="stretch" gap={4}>
+        <Box flex={3} display="flex" flexDirection="column" h="full" minH={0}>
           {mode === 'main' ? (
             <>
-              <SearchAndCreate
-                searchTerm={searchTerm}
-                onSearchTermChange={setSearchTerm}
-                selectedGameType={selectedGameType}
-                onGameTypeChange={setSelectedGameType}
-                onCreateGame={handleCreateGame}
-              />
-              <GameList games={filteredGames} onJoinGame={handleJoinGame} />
+              <Box mb={4}>
+                <SearchAndCreate
+                  searchTerm={searchTerm}
+                  onSearchTermChange={setSearchTerm}
+                  selectedGameType={selectedGameType}
+                  onGameTypeChange={setSelectedGameType}
+                  onCreateGame={handleCreateGame}
+                />
+              </Box>
+              {/* Scrollable rooms list */}
+              <Box flex="1" overflowY="auto" minH={0} mb={4}>
+                <GameList games={filteredGames} onJoinGame={handleJoinGame} />
+              </Box>
             </>
           ) : (
             currentGame && currentPlayer && (
-              <PlayerList
-                game={currentGame}
-                currentPlayerId={currentPlayer.id}
-                isHost={isHost}
-                onAddLocalPlayer={handleAddLocalPlayer}
-                onAddAIPlayer={handleAddAIPlayer}
-                onPlayerColorChange={handlePlayerColorChange}
-                onPlayerNameChange={handlePlayerNameChange}
-                onKickPlayer={handleKickPlayer}
-                onMutePlayer={handleMutePlayer}
-              />
+              <Box flex="1" overflowY="auto" minH={0} mb={4}>
+                <PlayerList
+                  game={currentGame}
+                  currentPlayerId={currentPlayer.id}
+                  isHost={isHost}
+                  onAddLocalPlayer={handleAddLocalPlayer}
+                  onAddAIPlayer={handleAddAIPlayer}
+                  onPlayerColorChange={handlePlayerColorChange}
+                  onPlayerNameChange={handlePlayerNameChange}
+                  onKickPlayer={handleKickPlayer}
+                  onMutePlayer={handleMutePlayer}
+                />
+              </Box>
             )
           )}
 
           {/* Shared chat */}
-          <ChatComponent
-            title={mode === 'main' ? 'Global Chat' : 'Game Chat'}
-            messages={chatMessages}
-            chatMessage={chatMessage}
-            onChatMessageChange={setChatMessage}
-            onSendMessage={handleSendMessage}
-            onKeyPress={(e) => {
-              if (e.key === 'Enter') handleSendMessage();
-            }}
-          />
-        </VStack>
+          <Box flexShrink={0}>
+            <ChatComponent
+              title={mode === 'main' ? 'Global Chat' : 'Game Chat'}
+              messages={chatMessages}
+              chatMessage={chatMessage}
+              onChatMessageChange={setChatMessage}
+              onSendMessage={handleSendMessage}
+              onKeyPress={(e) => {
+                if (e.key === 'Enter') handleSendMessage();
+              }}
+            />
+          </Box>
+        </Box>
 
         {/* Right column */}
         {mode === 'game' && currentGame && (
-          <VStack w="200px" align="stretch" gap={4}>
+          <Box
+            w="200px"
+            display="flex"
+            flexDirection="column"
+            h="full"
+            flexShrink={0}
+          >
             <GameControls
               game={currentGame}
               isHost={isHost}
@@ -384,7 +406,7 @@ const Lobby: React.FC<LobbyProps> = ({ mode }) => {
               onStartClick={handleStartGame}
               onLeaveClick={handleLeaveGame}
             />
-          </VStack>
+          </Box>
         )}
       </HStack>
 

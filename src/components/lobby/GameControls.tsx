@@ -71,7 +71,7 @@ export const GameControls: React.FC<GameControlsProps> = ({
   };
 
   return (
-    <VStack w="200px" gap={3} align="stretch" h="600px">
+    <Box w="200px" display="flex" flexDirection="column" h="full" minH={0}>
       {/* Top Controls - align with first player row */}
       <Box h="28px" /> {/* Spacer to align with Players title */}
       <Button
@@ -84,6 +84,7 @@ export const GameControls: React.FC<GameControlsProps> = ({
         fontFamily="Tiny5"
         leftIcon={<Text fontSize="2xl">{GAME_ICONS[game.type]}</Text>}
         isDisabled={!isHost}
+        mb={3}
         sx={{
           _hover: isHost ? {
             bg: 'rgba(255, 255, 255, 0.05)',
@@ -101,6 +102,7 @@ export const GameControls: React.FC<GameControlsProps> = ({
         colorScheme="blue"
         w="full"
         isDisabled={!isHost}
+        mb={3}
         sx={{
           _hover: isHost ? {
             bg: 'rgba(255, 255, 255, 0.05)',
@@ -121,6 +123,7 @@ export const GameControls: React.FC<GameControlsProps> = ({
         variant="outline"
         colorScheme="red"
         w="full"
+        mb={3}
         sx={{
           _hover: {
             bg: 'rgba(255, 255, 255, 0.05)',
@@ -141,6 +144,7 @@ export const GameControls: React.FC<GameControlsProps> = ({
         fontFamily="Tiny5"
         onClick={onStartClick}
         isDisabled={getStartButtonColor() === 'gray'}
+        mb={3}
         sx={{
           _hover: getStartButtonColor() !== 'gray' ? {
             bg: 'rgba(255, 255, 255, 0.05)',
@@ -153,8 +157,7 @@ export const GameControls: React.FC<GameControlsProps> = ({
       >
         {getStartButtonText()}
       </Button>
-      <Box h="10px" /> {/* Spacer to align with chat input bottom */}
-    </VStack>
+    </Box>
   );
 };
 

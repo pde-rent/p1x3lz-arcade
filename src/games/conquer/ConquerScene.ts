@@ -1,6 +1,6 @@
 import { GridScene } from '../common/GridScene';
 import type { GridSceneConfig } from '../common/GridScene';
-import type { ConquerGame, ConquerOptions, Position, Region, Player } from '../../types/core-types';
+import type { ConquerGame, ConquerOptions, Position, Region, Player, Grid } from '../../types/core-types';
 import { CellType, generateId } from '../../types/core-types';
 import { createScoreCalculator } from '../../utils/ScoreCalculators';
 
@@ -46,6 +46,17 @@ export class ConquerScene extends GridScene {
     const { width, height } = this.conquerGame.grid;
     const totalCells = width * height;
     const rockCount = Math.floor(totalCells * (options.rocksPercentage / 100));
+
+    // First, clear all existing cell states to ensure a fresh grid
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        const cell = this.conquerGame.grid.cells[y]?.[x];
+        if (cell) {
+          cell.type = CellType.EMPTY;
+          cell.owner = undefined;
+        }
+      }
+    }
 
     // Create a list of all possible cell positions
     const allPositions: Position[] = [];
@@ -416,8 +427,35 @@ export class ConquerScene extends GridScene {
    */
   override updateGameData(gameData: ConquerGame) {
     super.updateGameData(gameData);
-    this.conquerGame = gameData;
+    
+    // Check if the grid has been reset (all cells are empty, no rocks)
+    const isGridReset = this.isGridEmpty(gameData.grid);
+    
+    // If grid is reset, regenerate rocks for a fresh game
+    if (isGridReset) {
+      this.conquerGame = gameData;
+      this.generateRocks();
+      this.updateGrid(); // Update visual representation
+    } else {
+      this.conquerGame = gameData;
+    }
+    
     this.updateRegions();
+  }
+
+  /**
+   * Check if the grid is completely empty (no occupied cells or rocks)
+   */
+  private isGridEmpty(grid: Grid): boolean {
+    for (let y = 0; y < grid.height; y++) {
+      for (let x = 0; x < grid.width; x++) {
+        const cell = grid.cells[y]?.[x];
+        if (cell && (cell.type === CellType.OCCUPIED || cell.type === CellType.ROCK || cell.owner)) {
+          return false;
+        }
+      }
+    }
+    return true;
   }
 
   /**
